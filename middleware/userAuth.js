@@ -11,9 +11,8 @@ const saveUser = async (req, res, next) => {
       },
     });
     if (username) {
-      return res.json(409).send("User with this name exists");
+      return res.status(400).send("User with this name exists");
     }
-
     const emailcheck = await User.findOne({
       where: {
         email: req.body.email,
@@ -21,7 +20,7 @@ const saveUser = async (req, res, next) => {
     });
 
     if (emailcheck) {
-      return res.json(409).send("User with this email exists");
+      return res.status(400).send("User with this email exists");
     }
 
     next();
