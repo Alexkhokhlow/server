@@ -21,18 +21,19 @@ const signup = async (request, response) => {
       //   expiresIn: process.env.JWT_EXPIRES_IN,
       // });
       // return res.status(201).send(token);
-      return response.status(201).send();
+      return response.status(201).send({userName, email});
     } else {
-      return response.status(409).send("Details are not correct");
+      return response.status(400).send();
     }
   } catch (error) {
+    console.log("4");
     console.log(error);
   }
 };
 
-const login = async (req, res) => {
+const login = async (request, response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = request.body;
     const user = await User.findOne({
       where: {
         email: email,
@@ -45,12 +46,12 @@ const login = async (req, res) => {
         let token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
           expiresIn: EXPIRES_IN,
         });
-        return res.status(201).send(token);
+        return response.status(200).json({token});
       } else {
-        return res.status(401).send("Authentication failed");
+        return response.status(400).send("Authentication failed");
       }
     }
-    return res.status(401).send("Authentication failed");
+    return response.status(400).send("Authentication failed");
   } catch (error) {
     console.log(error);
   }
