@@ -3,7 +3,7 @@ const { Sequelize, DataTypes } = require("sequelize");
 
 // for server
 const sequelize = new Sequelize(
-  `postgres://db_0v4n_user:FOLSvtQu3GtoQfcQDbSk9nLz4Phyi1Yc@dpg-cfh05582i3mp5ru4fd8g-a.frankfurt-postgres.render.com/db_0v4n`,
+  `postgres://db_0v4n_user:FOLSvtQu3GtoQfcQDbSk9nLz4Phyi1Yc@dpg-cfh05582i3mp5ru4fd8g-a/db_0v4n`,
   { dialect: "postgres" }
 );
 
