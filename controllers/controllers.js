@@ -167,7 +167,7 @@ const controllerDashboard = {
                 let result = await TaskList.findOne({
                   include: [{ model: Task, where: { taskListId: data.id } }],
                 });
-               return result = result ? result : [];
+                return result ? result : data;
               })
             );
           } else {
