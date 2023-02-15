@@ -1,13 +1,12 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
-
 // for server
 const sequelize = new Sequelize(
   `postgres://db_0v4n_user:FOLSvtQu3GtoQfcQDbSk9nLz4Phyi1Yc@dpg-cfh05582i3mp5ru4fd8g-a/db_0v4n`,
   { dialect: "postgres" }
 );
 
-//for local
+// for local
 // const sequelize = new Sequelize(
 //   `postgres://postgres:Edelweis1@localhost:5432/postgres`,
 //   { dialect: "postgres" }
@@ -26,7 +25,28 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-tables = require("./userModel")(sequelize, DataTypes);
-db.users = tables.User;
+db.users = require("./userModel")(sequelize, DataTypes).User;
+db.dashboard = require("./dashboardModel")(sequelize, DataTypes).DashBoard;
+db.tasklist = require("./taskListModel")(sequelize, DataTypes).Tasklist;
+db.task = require("./taskModel")(sequelize, DataTypes).Task;
+
+db.users.hasMany(db.dashboard);
+
+db.dashboard.hasMany(db.tasklist, {
+  foreignKey: "dashboardId",
+});
+db.tasklist.belongsTo(db.dashboard, {
+  foreignKey: "dashboardId",
+});
+
+db.tasklist.hasMany(db.task, {
+  foreignKey: "taskListId",
+});
+db.task.belongsTo(db.tasklist, {
+  foreignKey: "taskListId",
+});
+
+db.users.belongsToMany(db.dashboard, { through: "user_dashboard" });
+db.dashboard.belongsToMany(db.users, { through: "user_dashboard" });
 
 module.exports = db;
