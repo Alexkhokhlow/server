@@ -93,7 +93,6 @@ const controllerDashboard = {
           userId,
           pathName,
         };
-        console.log(data);
         const dashboard = await Dashboard.create(data);
         if (dashboard) {
           return response.status(200).send({
@@ -149,6 +148,7 @@ const controllerDashboard = {
             pathName: pathName,
           },
         });
+
         if (dashboard) {
           const creator = dashboard.userId == userId;
           const users = await User.findAll({
@@ -161,14 +161,18 @@ const controllerDashboard = {
               { model: TaskList, where: { dashboardId: dashboard.id } },
             ],
           });
-          dashboardInfo.dataValues.tasklists = await Promise.all(
-            dashboardInfo.tasklists.map(
-              async (data) =>
-                await TaskList.findOne({
-                  include: [{ model: Task, where: { taskListId: data.id } }],
-                })
-            )
-          );
+          if (dashboardInfo) {
+            dashboardInfo.dataValues.tasklists = await Promise.all(
+              dashboardInfo.tasklists.map(
+                async (data) =>
+                  await TaskList.findOne({
+                    include: [{ model: Task, where: { taskListId: data.id } }],
+                  })
+              )
+            );
+          } else {
+            dashboardInfo = dashboard;
+          }
           if (creator || available) {
             return response
               .status(200)
