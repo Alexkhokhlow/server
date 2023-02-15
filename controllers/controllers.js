@@ -6,6 +6,8 @@ const EXPIRES_IN = "10d";
 
 const User = db.users;
 const Dashboard = db.dashboard;
+const TaskList = db.tasklist;
+const Task = db.task;
 
 const controllerUser = {
   signup: async (request, response) => {
@@ -148,17 +150,34 @@ const controllerDashboard = {
           },
         });
         if (dashboard) {
-          const creator = dashboard.userId === userId;
+          const creator = dashboard.userId == userId;
           const users = await User.findAll({
             include: [{ model: Dashboard, where: { id: dashboard.id } }],
           });
           const available =
             users.filter((data) => data.userId == userId).length !== 0;
+          let dashboardInfo = await Dashboard.findOne({
+            include: [
+              { model: TaskList, where: { dashboardId: dashboard.id } },
+            ],
+          });
+          dashboardInfo.dataValues.tasklists = await Promise.all(
+            dashboardInfo.tasklists.map(
+              async (data) =>
+                await TaskList.findOne({
+                  include: [{ model: Task, where: { taskListId: data.id } }],
+                })
+            )
+          );
           if (creator || available) {
-            return response.status(200).send({ dashboard, access: true });
+            return response
+              .status(200)
+              .send({ dashboard: dashboardInfo, access: true });
           } else {
-            if (dashboard.pubic) {
-              return response.status(200).send({ dashboard, access: false });
+            if (dashboard.public) {
+              return response
+                .status(200)
+                .send({ dashboard: dashboardInfo, access: false });
             } else {
               return response.status(403).send("no access to private board");
             }
@@ -170,6 +189,7 @@ const controllerDashboard = {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
+      console.log(error);
       return response.status(500).send("Error server");
     }
   },
@@ -212,17 +232,76 @@ const controllerDashboard = {
   },
 };
 
-controllerTaskList = {
+const controllerTaskList = {
   createTaskList: async (request, response) => {
     try {
       const { token, pathName, name } = request.body;
       const userId = jwt.verify(token, process.env.JWT_SECRET).id;
       if (userId) {
-        
+        const dashboard = await Dashboard.findOne({
+          where: {
+            pathName: pathName,
+          },
+        });
+        const taskList = await TaskList.create({ name });
+        dashboard.addTasklists(taskList);
+        return response.status(200).send({ name, id: taskList.id });
       } else {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
+      console.log(error);
+      return response.status(500).send("Error token");
+    }
+  },
+};
+
+const controllerTask = {
+  createTask: async (request, response) => {
+    try {
+      const { token, id, name, index } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const taskList = await TaskList.findOne({
+          where: {
+            id,
+          },
+        });
+        const task = await Task.create({ name, index });
+        taskList.addTasks(task);
+        return response.status(200).send({ task });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
+      return response.status(500).send("Error token");
+    }
+  },
+
+  updateTask: async (request, response) => {
+    try {
+      const { token, id, taskListId, name, index } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const task = await Task.update(
+          {
+            taskListId,
+            name,
+            index,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+        return response.status(200).send({ task });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
       return response.status(500).send("Error token");
     }
   },
@@ -231,4 +310,6 @@ controllerTaskList = {
 module.exports = {
   controllerUser,
   controllerDashboard,
+  controllerTaskList,
+  controllerTask,
 };

@@ -3,6 +3,8 @@ const express = require("express");
 const {
   controllerUser,
   controllerDashboard,
+  controllerTaskList,
+  controllerTask,
 } = require("../controllers/controllers");
 const userAuth = require("../middleware/userAuth");
 
@@ -21,5 +23,11 @@ router.post("/dashboard/:pathName", controllerDashboard.getDashboard);
 router.post("/dashboards", controllerDashboard.getDashboards);
 
 router.post("/users_dashboard", controllerDashboard.addUserToDashboard);
+
+router.post("/tasklist", controllerTaskList.createTaskList);
+
+router.post("/task", controllerTask.createTask);
+
+router.put("/task", controllerTask.updateTask);
 
 module.exports = router;
