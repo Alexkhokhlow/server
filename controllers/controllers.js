@@ -163,17 +163,18 @@ const controllerDashboard = {
           });
           if (dashboardInfo) {
             dashboardInfo.dataValues.tasklists = await Promise.all(
-              dashboardInfo.tasklists.map(
-                async (data) =>
-                  await TaskList.findOne({
-                    include: [{ model: Task, where: { taskListId: data.id } }],
-                  })
-              )
+              dashboardInfo.tasklists.map(async (data) => {
+                let result = await TaskList.findOne({
+                  include: [{ model: Task, where: { taskListId: data.id } }],
+                });
+                return result ? result : data;
+              })
             );
           } else {
             dashboardInfo = dashboard;
           }
           if (creator || available) {
+            console.log(dashboardInfo);
             return response
               .status(200)
               .send({ dashboard: dashboardInfo, access: true });
@@ -193,7 +194,7 @@ const controllerDashboard = {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
-      console.log(error);
+      console.log(error, " - error");
       return response.status(500).send("Error server");
     }
   },
