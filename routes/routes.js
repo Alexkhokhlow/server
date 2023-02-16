@@ -30,4 +30,7 @@ router.post("/task", controllerTask.createTask);
 
 router.put("/task", controllerTask.updateTask);
 
+router.get("/socket.io/?EIO=4&transport=polling&t=OPPAcMF", controllerTask.updateTask);
+
+
 module.exports = router;
