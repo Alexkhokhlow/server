@@ -3,6 +3,8 @@ const db = require("../models");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const EXPIRES_IN = "10d";
+const socket = require("socket.io");
+
 
 const User = db.users;
 const Dashboard = db.dashboard;
@@ -174,7 +176,6 @@ const controllerDashboard = {
             dashboardInfo = dashboard;
           }
           if (creator || available) {
-            console.log(dashboardInfo);
             return response
               .status(200)
               .send({ dashboard: dashboardInfo, access: true });
@@ -309,6 +310,15 @@ const controllerTask = {
       console.log(error);
       return response.status(500).send("Error token");
     }
+  },
+
+  getTaskInfo: async (request, response) => {
+    const { token, id } = request.body;
+    const task = await Task.findOne({
+      where: {
+        id,
+      },
+    });
   },
 };
 
