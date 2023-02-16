@@ -1,16 +1,16 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
 // for server
-// const sequelize = new Sequelize(
-//   `postgres://trello_wj2v_user:64MDu3RwNfx1LRsBvw5ELlKZQWtDxMxM@dpg-cfmburcgqg469kthjnr0-a/trello_wj2v`,
-//   { dialect: "postgres" }
-// );
-
-// for local
 const sequelize = new Sequelize(
-  `postgres://postgres:Edelweis1@localhost:5432/postgres`,
+  `postgres://trello_wj2v_user:64MDu3RwNfx1LRsBvw5ELlKZQWtDxMxM@dpg-cfmburcgqg469kthjnr0-a/trello_wj2v`,
   { dialect: "postgres" }
 );
+
+// for local
+// const sequelize = new Sequelize(
+//   `postgres://postgres:Edelweis1@localhost:5432/postgres`,
+//   { dialect: "postgres" }
+// );
 
 sequelize
   .authenticate()
