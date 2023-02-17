@@ -3,13 +3,13 @@ const db = require("../models");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const EXPIRES_IN = "10d";
-const socket = require("socket.io");
-
 
 const User = db.users;
 const Dashboard = db.dashboard;
 const TaskList = db.tasklist;
 const Task = db.task;
+const Taskinfo = db.taskinfo;
+const Comment = db.comment;
 
 const controllerUser = {
   signup: async (request, response) => {
@@ -274,6 +274,7 @@ const controllerTask = {
           },
         });
         const task = await Task.create({ name, index });
+        Taskinfo.create({ tasklist: taskList.name, name, taskId: task.id });
         taskList.addTasks(task);
         return response.status(200).send({ task });
       } else {
@@ -314,17 +315,133 @@ const controllerTask = {
 
   getTaskInfo: async (request, response) => {
     const { token, id } = request.body;
-    const task = await Task.findOne({
+    const taskInfo = await Taskinfo.findOne({
       where: {
-        id,
+        taskId: id,
       },
     });
+    let comments = await Taskinfo.findOne({
+      include: [{ model: Comment, where: { taskinfoId: taskInfo.id } }],
+    });
+    const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (comments) {
+      comments = comments.comments;
+    } else {
+      comments = [];
+    }
+    if (userId) {
+      const user = await User.findOne({
+        where: {
+          id: userId,
+        },
+      });
+
+      return response.status(200).send({
+        taskInfo,
+        comments: comments,
+        user: { name: user.userName, id: user.id },
+      });
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
+
+  updateTaskInfo: async (request, response) => {
+    const { token, id, description } = request.body;
+    const taskInfo = await Taskinfo.update(
+      {
+        description,
+      },
+      {
+        where: {
+          taskId: id,
+        },
+      }
+    );
+
+    return response.status(200).send({ taskInfo });
+  },
+
+  createComment: async (request, response) => {
+    const { token, id, comment } = request.body;
+    const taskInfo = await Taskinfo.findOne({
+      where: {
+        taskId: id,
+      },
+    });
+
+    const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userId) {
+      const user = await User.findOne({
+        where: {
+          id: userId,
+        },
+      });
+      const commentInfo = await Comment.create({
+        userName: user.userName,
+        userId,
+        text: comment,
+      });
+      await taskInfo.addComment(commentInfo);
+      return response.status(201).send({ commentInfo });
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
+
+  updateComment: async (request, response) => {
+    const { token, userId, id, comment } = request.body;
+    const userIdToken = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userIdToken) {
+      if (userId == userIdToken) {
+        const commentData = await Comment.update(
+          {
+            text: comment,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+        return response.status(201).send({ commentData });
+      } else {
+        return response.status(403).send("No access");
+      }
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
+  deleteComment: async (request, response) => {
+    const { token, userId, id } = request.body;
+    const userIdToken = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userIdToken) {
+      if (userId == userIdToken) {
+        const commentData = await Comment.destroy({
+          where: {
+            id,
+          },
+        });
+        return response.status(201).send({ commentData });
+      } else {
+        return response.status(403).send("No access");
+      }
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
   },
 };
 
+const controllerAuth = {
+  google: async (request, response) => {
+    return response.status(201).send({ response });
+  },
+};
 module.exports = {
   controllerUser,
   controllerDashboard,
   controllerTaskList,
   controllerTask,
+  controllerAuth
+  
 };

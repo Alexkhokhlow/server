@@ -30,6 +30,8 @@ db.dashboard = require("./dashboardModel")(sequelize, DataTypes).DashBoard;
 db.tasklist = require("./taskListModel")(sequelize, DataTypes).Tasklist;
 db.task = require("./taskModel")(sequelize, DataTypes).Task;
 db.taskinfo = require("./taskInfoModel")(sequelize, DataTypes).Taskinfo;
+db.comment = require("./commentModel")(sequelize, DataTypes).Comment;
+
 
 db.users.hasMany(db.dashboard);
 
@@ -47,8 +49,8 @@ db.task.belongsTo(db.tasklist, {
   foreignKey: "taskListId",
 });
 
-db.task.hasOne(db.taskinfo);
-db.taskinfo.belongsTo(db.task);
+db.taskinfo.hasMany(db.comment);
+db.comment.belongsTo(db.taskinfo);
 
 db.users.belongsToMany(db.dashboard, { through: "user_dashboard" });
 db.dashboard.belongsToMany(db.users, { through: "user_dashboard" });

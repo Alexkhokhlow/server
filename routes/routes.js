@@ -5,7 +5,9 @@ const {
   controllerDashboard,
   controllerTaskList,
   controllerTask,
+  controllerAuth,
 } = require("../controllers/controllers");
+const passport = require("passport");
 const userAuth = require("../middleware/userAuth");
 
 const router = express.Router();
@@ -30,7 +32,16 @@ router.post("/task", controllerTask.createTask);
 
 router.put("/task", controllerTask.updateTask);
 
-router.get("/socket.io/?EIO=4&transport=polling&t=OPPAcMF", controllerTask.updateTask);
+router.post("/taskInfo", controllerTask.getTaskInfo);
+
+router.put("/taskInfo", controllerTask.updateTaskInfo);
+
+router.post("/comment", controllerTask.createComment);
+
+router.put("/comment", controllerTask.updateComment);
+
+router.delete("/comment", controllerTask.deleteComment);
+
 
 
 module.exports = router;
