@@ -1,19 +1,16 @@
 module.exports = (sequelize, DataTypes) => {
-  const Taskinfo = sequelize.define(
-    "taskinfo",
+  const Comment = sequelize.define(
+    "comment",
     {
-      name: {
+      text: {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      tasklist: {
+      userId: {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      description: {
-        type: DataTypes.STRING,
-      },
-      taskId: {
+      userName: {
         type: DataTypes.STRING,
         allowNull: false,
       },
@@ -21,5 +18,5 @@ module.exports = (sequelize, DataTypes) => {
     { timestamps: true }
   );
 
-  return { Taskinfo };
+  return { Comment };
 };
