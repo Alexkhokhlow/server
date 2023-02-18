@@ -370,6 +370,7 @@ const controllerTask = {
         taskId: id,
       },
     });
+    
     let comments = await Taskinfo.findOne({
       include: [{ model: Comment, where: { taskinfoId: taskInfo.id } }],
     });
