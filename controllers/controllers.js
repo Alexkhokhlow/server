@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const db = require("../models");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
 const EXPIRES_IN = "10d";
 
 const User = db.users;
@@ -10,6 +11,38 @@ const TaskList = db.tasklist;
 const Task = db.task;
 const Taskinfo = db.taskinfo;
 const Comment = db.comment;
+const Label = db.label;
+
+const color = [
+  {
+    color: "#7BC86C",
+    title: "green",
+  },
+  {
+    color: "#F5DD29",
+    title: "yellow",
+  },
+  {
+    color: "#FFAF3F",
+    title: "orange",
+  },
+  {
+    color: "#EF7564",
+    title: "red",
+  },
+  {
+    color: "#CD8DE5",
+    title: "purple",
+  },
+  {
+    color: "#A86CC1",
+    title: "purple dark",
+  },
+  {
+    color: "#5BA4CF",
+    title: "blue",
+  },
+];
 
 const controllerUser = {
   signup: async (request, response) => {
@@ -135,6 +168,7 @@ const controllerDashboard = {
         return response.status(401).send("Unauthorized");
       }
     } catch (e) {
+      console.log(e);
       return response.status(500).send("Error server");
     }
   },
@@ -149,6 +183,22 @@ const controllerDashboard = {
           where: {
             pathName: pathName,
           },
+        });
+
+        color.forEach(async (info) => {
+          const label = await Label.findOne({
+            where: {
+              color: info.color,
+            },
+          });
+
+          if (!label) {
+            Label.create({
+              color: info.color,
+              text: "",
+              title: info.title,
+            });
+          }
         });
 
         if (dashboard) {
@@ -323,12 +373,12 @@ const controllerTask = {
     let comments = await Taskinfo.findOne({
       include: [{ model: Comment, where: { taskinfoId: taskInfo.id } }],
     });
+    let labels = await Label.findAll({
+      include: [{ model: Task, where: { id: taskInfo.taskId } }],
+    });
     const userId = jwt.verify(token, process.env.JWT_SECRET).id;
-    if (comments) {
-      comments = comments.comments;
-    } else {
-      comments = [];
-    }
+    comments = comments ? comments.comments : [];
+
     if (userId) {
       const user = await User.findOne({
         where: {
@@ -340,6 +390,7 @@ const controllerTask = {
         taskInfo,
         comments: comments,
         user: { name: user.userName, id: user.id },
+        labels,
       });
     } else {
       return response.status(401).send("Unauthorized");
@@ -412,6 +463,7 @@ const controllerTask = {
       return response.status(401).send("Unauthorized");
     }
   },
+
   deleteComment: async (request, response) => {
     const { token, userId, id } = request.body;
     const userIdToken = jwt.verify(token, process.env.JWT_SECRET).id;
@@ -430,11 +482,91 @@ const controllerTask = {
       return response.status(401).send("Unauthorized");
     }
   },
+
+  addLabel: async (request, response) => {
+    try {
+      const { token, labelId, taskId } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const label = await Label.findOne({
+          where: {
+            id: labelId,
+          },
+        });
+        const task = await Task.findOne({
+          where: {
+            id: taskId,
+          },
+        });
+        if (label && task) {
+          await task.addLabel(label);
+          Label.findAll({
+            include: [{ model: Task, where: { id: task.id } }],
+          }).then((labels) => {
+            return response.status(201).send({ labels });
+          });
+        } else {
+          return response.status(400).send("No dashboards created");
+        }
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
+      return response.status(500).send("Error token");
+    }
+  },
+
+  updateLabel: async (request, response) => {
+    try {
+      const { token, id, title } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const labelInfo = await Label.update(
+          {
+            title,
+          },
+          {
+            where: {
+              id
+            },
+          }
+        );
+        console.log(labelInfo)
+        return response.status(201).send({ labelInfo });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
+      return response.status(500).send("Error token");
+    }
+  },
 };
 
 const controllerAuth = {
   google: async (request, response) => {
-    return response.status(201).send({ response });
+    const data = response.req.user._json;
+    const user = await User.findOne({
+      where: {
+        email: data.email,
+      },
+    });
+    if (user) {
+      let token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+        expiresIn: EXPIRES_IN,
+      });
+      return response.status(201).send({ token });
+    } else {
+      console.log(data);
+      const dataUser = {
+        userName: data.name,
+        email: data.email,
+        password: await bcrypt.hash(data.sub, 10),
+      };
+      const userNew = await User.create(dataUser);
+      console.log(userNew, " New ");
+    }
   },
 };
 module.exports = {
@@ -442,6 +574,5 @@ module.exports = {
   controllerDashboard,
   controllerTaskList,
   controllerTask,
-  controllerAuth
-  
+  controllerAuth,
 };
