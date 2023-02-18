@@ -7,8 +7,36 @@ const {
   controllerTask,
   controllerAuth,
 } = require("../controllers/controllers");
-const passport = require("passport");
 const userAuth = require("../middleware/userAuth");
+
+const passport = require("passport");
+
+const GoogleStrategy = require("passport-google-oauth").OAuth2Strategy;
+const GOOGLE_CLIENT_ID =
+  "9479350765-89gr5t1rpmpd9ao2h4gl0udgu3fntlb5.apps.googleusercontent.com";
+const GOOGLE_CLIENT_SECRET = "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";
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/auth/google/callback",
+    },
+    function (accessToken, refreshToken, profile, done) {
+      userProfile = profile;
+      return done(null, userProfile);
+    }
+  )
+);
+
+passport.serializeUser(function (user, cb) {
+  cb(null, user);
+});
+
+passport.deserializeUser(function (obj, cb) {
+  cb(null, obj);
+});
 
 const router = express.Router();
 
@@ -42,6 +70,20 @@ router.put("/comment", controllerTask.updateComment);
 
 router.delete("/comment", controllerTask.deleteComment);
 
+router.post('/label', controllerTask.addLabel);
 
+router.put('/label', controllerTask.updateLabel);
+
+
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google"),
+  controllerAuth.google
+);
 
 module.exports = router;
