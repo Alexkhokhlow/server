@@ -217,7 +217,7 @@ const controllerDashboard = {
             dashboardInfo.dataValues.tasklists = await Promise.all(
               dashboardInfo.tasklists.map(async (data) => {
                 const result = await TaskList.findOne({
-                  include: [{ model: Task, where: { taskListId: data.id } }],
+                  include: [{ model: Task,  order: [["index", "ASC"]], where: { taskListId: data.id } }],
                 });
                 if (result) {
                   result.dataValues.tasks = await Promise.all(
