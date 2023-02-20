@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      index : {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        allowNull: false,
+      }
     },
     { timestamps: true }
   );

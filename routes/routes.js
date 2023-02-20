@@ -74,6 +74,12 @@ router.post('/label', controllerTask.addLabel);
 
 router.put('/label', controllerTask.updateLabel);
 
+router.delete('/label', controllerTask.deleteLabel);
+
+router.post('/labels', controllerTask.getLabels);
+
+router.post('/label/:id', controllerTask.getLabel);
+
 
 router.get(
   "/google",

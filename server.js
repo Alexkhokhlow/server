@@ -36,8 +36,17 @@ db.sequelize.sync({ force: false }).then(() => {
 });
 
 io.on("connection", (socket) => {
-  socket.on("message", (data) => {
-    socket.broadcast.emit("answer", data);
+  console.log(io.sockets.sockets.size);
+  socket.on("board", (data) => {
+    io.sockets.emit("board", data);
+  });
+  socket.on("label", (data) => {
+    io.sockets.emit("board", data);
+    io.sockets.emit("label", data);
+  });
+  socket.on("taskInfo", (data) => {
+    io.sockets.emit("board", data);
+    io.sockets.emit("taskInfo", data);
   });
 });
 
