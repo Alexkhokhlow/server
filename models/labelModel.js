@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
-  const Label = sequelize.define(
-    "label",
+  const Labels = sequelize.define(
+    "labels",
     {
       color: {
         type: DataTypes.STRING,
@@ -15,12 +15,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       index : {
         type: DataTypes.INTEGER,
-        primaryKey: true,
+        allowNull: false,
+      },
+      dashboardId : {
+        type: DataTypes.INTEGER,
         allowNull: false,
       }
     },
     { timestamps: true }
   );
 
-  return { Label };
+  return { Labels };
 };

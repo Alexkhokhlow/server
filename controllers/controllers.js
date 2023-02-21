@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const db = require("../models");
 const jwt = require("jsonwebtoken");
+const e = require("express");
 require("dotenv").config();
 
 const EXPIRES_IN = "10d";
@@ -11,10 +12,10 @@ const TaskList = db.tasklist;
 const Task = db.task;
 const Taskinfo = db.taskinfo;
 const Comment = db.comment;
-const Label = db.label;
+const Labels = db.labels;
 const TaskLabel = db.taskLabel;
 
-const color = [
+const colors = [
   {
     color: "#7BC86C",
     title: "green",
@@ -46,6 +47,20 @@ const color = [
 ];
 
 const controllerUser = {
+  checkToken: async (request, response) => {
+    try {
+      const { token } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        return response.status(200).send({ success: true });
+      } else {
+        return response.status(400).send("error token");
+      }
+    } catch (error) {
+      return response.status(400).send("error token");
+    }
+  },
+
   signup: async (request, response) => {
     try {
       const { userName, email, password } = request.body;
@@ -129,8 +144,20 @@ const controllerDashboard = {
           userId,
           pathName,
         };
+
         const dashboard = await Dashboard.create(data);
+
         if (dashboard) {
+          colors.forEach(async (info, index) => {
+            Labels.create({
+              color: info.color,
+              text: "",
+              title: info.title,
+              index,
+              dashboardId: dashboard.id,
+            });
+          });
+
           return response.status(200).send({
             name,
             color,
@@ -144,6 +171,7 @@ const controllerDashboard = {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
+      console.log(error);
       return response.status(500).send("Error server");
     }
   },
@@ -184,23 +212,6 @@ const controllerDashboard = {
           },
         });
 
-        color.forEach(async (info, index) => {
-          const label = await Label.findOne({
-            where: {
-              color: info.color,
-            },
-          });
-
-          if (!label) {
-            Label.create({
-              color: info.color,
-              text: "",
-              title: info.title,
-              index,
-            });
-          }
-        });
-
         if (dashboard) {
           const creator = dashboard.userId == userId;
           const users = await User.findAll({
@@ -213,36 +224,38 @@ const controllerDashboard = {
               { model: TaskList, where: { dashboardId: dashboard.id } },
             ],
           });
+          const labels = await Labels.findAll({
+            order: [["index", "ASC"]],
+            where: { dashboardId: dashboard.id },
+          });
           if (dashboardInfo) {
             dashboardInfo.dataValues.tasklists = await Promise.all(
               dashboardInfo.tasklists.map(async (data) => {
                 const result = await TaskList.findOne({
-                  include: [{ model: Task,  order: [["index", "ASC"]], where: { taskListId: data.id } }],
+                  include: [
+                    {
+                      model: Task,
+                      order: [["updatedAt", "ASC"]],
+                      where: { taskListId: data.id },
+                    },
+                  ],
                 });
                 if (result) {
                   result.dataValues.tasks = await Promise.all(
                     result.tasks.map(async (task) => {
-                      const labels = await TaskLabel.findAll({
-                        order: [["updatedAt", "ASC"]],
-                        where: { taskId: task.id },
+                      let labels = await Labels.findAll({
+                        order: [["index", "ASC"]],
+                        include: [{ model: Task, where: { id: task.id } }],
                       });
                       if (labels) {
-                        task.dataValues.labels = await Promise.all(
-                          labels.map(async (item) => {
-                            return await Label.findOne({
-                              where: {
-                                index: item.labelIndex,
-                              },
-                            });
-                          })
-                        );
+                        task.dataValues.labels = labels;
                       } else {
                         task.dataValues.labels = [];
                       }
-
                       return task;
                     })
                   );
+
                   data.dataValues.tasks = result.tasks;
                 } else {
                   data.dataValues.tasks = [];
@@ -254,14 +267,20 @@ const controllerDashboard = {
             dashboardInfo = dashboard;
           }
           if (creator || available) {
-            return response
-              .status(200)
-              .send({ dashboard: dashboardInfo, access: true });
+            return response.status(200).send({
+              dashboard: dashboardInfo,
+              labels,
+              id: dashboard.id,
+              access: true,
+            });
           } else {
             if (dashboard.public) {
-              return response
-                .status(200)
-                .send({ dashboard: dashboardInfo, access: false });
+              return response.status(200).send({
+                dashboard: dashboardInfo,
+                labels,
+                id: dashboard.id,
+                access: false,
+              });
             } else {
               return response.status(403).send("no access to private board");
             }
@@ -337,6 +356,38 @@ const controllerTaskList = {
       return response.status(500).send("Error token");
     }
   },
+
+  deleteTaskList: async (request, response) => {
+    try {
+      const { token, boardId, id } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const dashboard = await Dashboard.findOne({
+          where: {
+            id: boardId,
+          },
+        });
+        const taskList = await TaskList.findOne({
+          where: {
+            id,
+          },
+        });
+        await Task.destroy({
+          where: {
+            taskListId: id,
+          },
+        }); 
+        dashboard.removeTasklist(taskList);
+        taskList.destroy();
+        return response.status(200).send({ success: true });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
+      return response.status(500).send("Error token");
+    }
+  },
 };
 
 const controllerTask = {
@@ -399,7 +450,8 @@ const controllerTask = {
     let comments = await Taskinfo.findOne({
       include: [{ model: Comment, where: { taskinfoId: taskInfo.id } }],
     });
-    let labels = await Label.findAll({
+    let labels = await Labels.findAll({
+      order: [["index", "ASC"]],
       include: [{ model: Task, where: { id: taskInfo.taskId } }],
     });
     const userId = jwt.verify(token, process.env.JWT_SECRET).id;
@@ -511,12 +563,13 @@ const controllerTask = {
 
   addLabel: async (request, response) => {
     try {
-      const { token, labelId, taskId } = request.body;
+      const { token, labelId, taskId, dashboardId } = request.body;
       const userId = jwt.verify(token, process.env.JWT_SECRET).id;
       if (userId) {
-        const label = await Label.findOne({
+        const label = await Labels.findOne({
           where: {
             index: labelId,
+            dashboardId,
           },
         });
         const task = await Task.findOne({
@@ -528,7 +581,7 @@ const controllerTask = {
         if (label && task) {
           await task.addLabel(label);
 
-          Label.findAll({
+          Labels.findAll({
             include: [{ model: Task, where: { id: task.id } }],
           }).then((labels) => {
             return response.status(201).send({ labels });
@@ -540,13 +593,14 @@ const controllerTask = {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
+      console.log(error);
       return response.status(500).send("Error token");
     }
   },
 
   deleteLabel: async (request, response) => {
     try {
-      const { token, labelId, taskId } = request.body;
+      const { token, labelId, taskId, dashboardId } = request.body;
       const userId = jwt.verify(token, process.env.JWT_SECRET).id;
       if (userId) {
         const task = await Task.findOne({
@@ -554,9 +608,10 @@ const controllerTask = {
             id: taskId,
           },
         });
-        const label = await Label.findOne({
+        const label = await Labels.findOne({
           where: {
             index: labelId,
+            dashboardId,
           },
         });
         task.removeLabel(label);
@@ -571,11 +626,17 @@ const controllerTask = {
 
   getLabels: async (request, response) => {
     try {
-      const { token } = request.body;
+      const { token, boardId } = request.body;
       const userId = jwt.verify(token, process.env.JWT_SECRET).id;
       if (userId) {
-        const labelsInfo = await Label.findAll({
-          order: [["index", "ASC"]],
+        const labelsInfo = Labels.findAll({
+          include: [
+            {
+              model: Dashboard,
+              order: [["index", "ASC"]],
+              where: { id: boardId },
+            },
+          ],
         });
         return response.status(201).send({ labelsInfo });
       } else {
@@ -588,35 +649,41 @@ const controllerTask = {
 
   getLabel: async (request, response) => {
     try {
-      const { token } = request.body;
+      let { token, dashboardId } = request.body;
       const { id } = request.params;
 
       const userId = jwt.verify(token, process.env.JWT_SECRET).id;
       if (userId) {
-        const labels = await Label.findAll({
+        const labels = await Labels.findAll({
+          order: [["index", "ASC"]],
           include: [{ model: Task, where: { id } }],
+          where: {
+            dashboardId,
+          },
         });
         return response.status(201).send(labels);
       } else {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
+      console.log(error);
       return response.status(500).send("Error token");
     }
   },
 
   updateLabel: async (request, response) => {
     try {
-      const { token, id, text } = request.body;
+      const { token, id, text, dashboardId } = request.body;
       const userId = jwt.verify(token, process.env.JWT_SECRET).id;
       if (userId) {
-        const labelInfo = await Label.update(
+        const labelInfo = await Labels.update(
           {
             text,
           },
           {
             where: {
               index: id,
+              dashboardId,
             },
           }
         );

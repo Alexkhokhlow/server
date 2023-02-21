@@ -40,6 +40,8 @@ passport.deserializeUser(function (obj, cb) {
 
 const router = express.Router();
 
+router.post("/token", controllerUser.checkToken);
+
 router.post("/signup", userAuth.saveUser, controllerUser.signup);
 
 router.post("/login", controllerUser.login);
@@ -55,6 +57,8 @@ router.post("/dashboards", controllerDashboard.getDashboards);
 router.post("/users_dashboard", controllerDashboard.addUserToDashboard);
 
 router.post("/tasklist", controllerTaskList.createTaskList);
+
+router.delete("/tasklist", controllerTaskList.deleteTaskList);
 
 router.post("/task", controllerTask.createTask);
 

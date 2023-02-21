@@ -36,7 +36,6 @@ db.sequelize.sync({ force: false }).then(() => {
 });
 
 io.on("connection", (socket) => {
-  console.log(io.sockets.sockets.size);
   socket.on("board", (data) => {
     socket.broadcast.emit("board", data);
   });
@@ -46,7 +45,7 @@ io.on("connection", (socket) => {
   });
   socket.on("taskInfo", (data) => {
     io.sockets.emit("board", data);
-    io.sockets.emit("taskInfo", data);
+    socket.broadcast.emit("taskInfo", data);
   });
 });
 
