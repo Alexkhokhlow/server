@@ -983,7 +983,7 @@ const controllerAuth = {
     let token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: EXPIRES_IN,
     });
-    response.redirect(`https://trello-clone-x3tl.onrender.com/#token=${token}`);
+    response.redirect(`http://localhost:8080/#token=${token}`);
     return;
   },
 };
