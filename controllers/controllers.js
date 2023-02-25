@@ -1,8 +1,35 @@
 const bcrypt = require("bcrypt");
 const db = require("../models");
 const jwt = require("jsonwebtoken");
-const e = require("express");
 require("dotenv").config();
+let io = "";
+
+function createIO(server) {
+  io = require("socket.io")(server, {
+    cors: {
+      origin: "http://localhost:8080",
+      methods: ["GET", "POST"],
+    },
+  });
+
+  io.on("connection", (socket) => {
+    socket.on("boardConnection", (data) => {
+      socket.join(data);
+    });
+    socket.on("board", (data) => {
+      socket.broadcast.to(data).emit("board");
+    });
+
+    socket.on("taskInfo", (data) => {
+      io.sockets.to(data).emit("board");
+      socket.broadcast.to(data).emit("taskInfo", data);
+    });
+    socket.on("label", (data) => {
+      io.sockets.to(data).emit("board", data);
+      io.sockets.to(data).emit("label", data);
+    });
+  });
+}
 
 const EXPIRES_IN = "10d";
 
@@ -13,7 +40,8 @@ const Task = db.task;
 const Taskinfo = db.taskinfo;
 const Comment = db.comment;
 const Labels = db.labels;
-const TaskLabel = db.taskLabel;
+const CheckList = db.checkList;
+const Todo = db.todo;
 
 const colors = [
   {
@@ -74,9 +102,11 @@ const controllerUser = {
       if (user) {
         return response.status(201).send({ userName, email });
       } else {
+        console.log(error);
         return response.status(400).send("error");
       }
     } catch (error) {
+      console.log(error);
       return response.status(400).send();
     }
   },
@@ -120,6 +150,52 @@ const controllerUser = {
       } else {
         return response.status(200).json();
       }
+    } catch (error) {
+      return response.status(400).send();
+    }
+  },
+
+  getUserInfo: async (request, response) => {
+    try {
+      const { token } = request.body;
+      const id = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (id) {
+        const user = await User.findOne({
+          where: {
+            id,
+          },
+        });
+
+        return response
+          .status(200)
+          .json({ name: user.userName, email: user.email, info: user.info });
+      }
+      return response.status(401).send("Unauthorized");
+    } catch (error) {
+      return response.status(400).send();
+    }
+  },
+
+  updateUserInfo: async (request, response) => {
+    try {
+      const { token, info, userName } = request.body;
+      const id = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (id) {
+        const user = await User.update(
+          {
+            info,
+            userName,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+
+        return response.status(200).json({ name: user.name, info: user.info });
+      }
+      return response.status(401).send("Unauthorized");
     } catch (error) {
       return response.status(400).send();
     }
@@ -247,11 +323,54 @@ const controllerDashboard = {
                         order: [["index", "ASC"]],
                         include: [{ model: Task, where: { id: task.id } }],
                       });
-                      if (labels) {
-                        task.dataValues.labels = labels;
+                      task.dataValues.labels = labels ? labels : [];
+
+                      let taskInfo = await Taskinfo.findOne({
+                        where: { id: task.id },
+                      });
+
+                      task.dataValues.description = taskInfo.description
+                        ? taskInfo.description
+                        : "";
+
+                      let checkLists = await CheckList.findAll({
+                        include: [{ model: Taskinfo, where: { id: task.id } }],
+                      });
+
+                      if (checkLists) {
+                        checkLists = await Promise.all(
+                          checkLists.map(async (item) => {
+                            let checkLists = await Todo.findAll({
+                              include: [
+                                { model: CheckList, where: { id: item.id } },
+                              ],
+                            });
+                            let checked = 0;
+                            let unchecked = 0;
+                            checkLists.forEach((todo) => {
+                              if (todo.checked) {
+                                checked += 1;
+                              } else {
+                                unchecked += 1;
+                              }
+                            });
+                            return { checked, all: checked + unchecked };
+                          })
+                        );
+                        checkLists = checkLists.reduce(
+                          (acc, item) => {
+                            return (acc = {
+                              checked: acc.checked + item.checked,
+                              all: acc.all + item.all,
+                            });
+                          },
+                          { checked: 0, all: 0 }
+                        );
+                        task.dataValues.checkList = [checkLists];
                       } else {
-                        task.dataValues.labels = [];
+                        task.dataValues.checkList = [];
                       }
+
                       return task;
                     })
                   );
@@ -270,6 +389,7 @@ const controllerDashboard = {
             return response.status(200).send({
               dashboard: dashboardInfo,
               labels,
+              users,
               id: dashboard.id,
               access: true,
             });
@@ -278,6 +398,7 @@ const controllerDashboard = {
               return response.status(200).send({
                 dashboard: dashboardInfo,
                 labels,
+                users,
                 id: dashboard.id,
                 access: false,
               });
@@ -307,6 +428,7 @@ const controllerDashboard = {
             email: email,
           },
         });
+
         const dashboard = await Dashboard.findOne({
           where: {
             pathName: pathName,
@@ -324,13 +446,13 @@ const controllerDashboard = {
             );
           });
         } else {
-          return response.status(400).send("No dashboards created");
+          return response.status(400).send("User not fround");
         }
       } else {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
-      return response.status(500).send("Error token");
+      return response.status(500).send("Error sever");
     }
   },
 };
@@ -347,7 +469,8 @@ const controllerTaskList = {
           },
         });
         const taskList = await TaskList.create({ name });
-        dashboard.addTasklists(taskList);
+        await dashboard.addTasklists(taskList);
+        io;
         return response.status(200).send({ name, id: taskList.id });
       } else {
         return response.status(401).send("Unauthorized");
@@ -376,7 +499,7 @@ const controllerTaskList = {
           where: {
             taskListId: id,
           },
-        }); 
+        });
         dashboard.removeTasklist(taskList);
         taskList.destroy();
         return response.status(200).send({ success: true });
@@ -450,6 +573,24 @@ const controllerTask = {
     let comments = await Taskinfo.findOne({
       include: [{ model: Comment, where: { taskinfoId: taskInfo.id } }],
     });
+    let checkLists = await Taskinfo.findOne({
+      include: [{ model: CheckList, where: { taskinfoId: taskInfo.id } }],
+    });
+    if (checkLists) {
+      checkLists = await Promise.all(
+        checkLists.checkLists.map(async (item) => {
+          let todo = await Todo.findAll({
+            where: {
+              checkListId: item.id,
+            },
+          });
+          item.dataValues.todo = todo ? todo : [];
+          return item;
+        })
+      );
+    } else {
+      checkLists = [];
+    }
     let labels = await Labels.findAll({
       order: [["index", "ASC"]],
       include: [{ model: Task, where: { id: taskInfo.taskId } }],
@@ -469,6 +610,7 @@ const controllerTask = {
         comments: comments,
         user: { name: user.userName, id: user.id },
         labels,
+        checkLists,
       });
     } else {
       return response.status(401).send("Unauthorized");
@@ -695,29 +837,154 @@ const controllerTask = {
       return response.status(500).send("Error token");
     }
   },
+
+  createCheckList: async (request, response) => {
+    try {
+      const { token, id, name } = request.body;
+
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const taskInfo = await Taskinfo.findOne({
+          where: {
+            id,
+          },
+        });
+        const checkList = await CheckList.create({ name });
+        await taskInfo.addCheckList(checkList);
+        return response.status(201).send({ checkList });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (e) {
+      console.log(e);
+      return response.status(500).send("Error server");
+    }
+  },
+
+  updateCheckList: async (request, response) => {
+    const { token, id, name } = request.body;
+    const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userId) {
+      const todo = await CheckList.update(
+        {
+          name,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      return response.status(201).send({ todo });
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
+
+  deleteCheckList: async (request, response) => {
+    const { token, id } = request.body;
+    const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userId) {
+      const checkList = await CheckList.destroy({
+        where: {
+          id,
+        },
+      });
+      Todo.destroy({
+        where: {
+          checkListId: id,
+        },
+      });
+      return response.status(201).send({ checkList });
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
+
+  createTodo: async (request, response) => {
+    try {
+      const { token, id, text } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const checkList = await CheckList.findOne({
+          where: {
+            id,
+          },
+        });
+        const todo = await Todo.create({
+          checked: false,
+          text,
+        });
+        await checkList.addTodo(todo);
+        return response.status(201).send({ todo });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
+      return response.status(500).send("Error token");
+    }
+  },
+
+  updateTodo: async (request, response) => {
+    const { token, id, text, checked } = request.body;
+    const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userId) {
+      const todo = await Todo.update(
+        {
+          checked,
+          text,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      return response.status(201).send({ todo });
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
+
+  deleteTodo: async (request, response) => {
+    const { token, id } = request.body;
+    const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+    if (userId) {
+      const todo = await Todo.destroy({
+        where: {
+          id,
+        },
+      });
+      return response.status(201).send({ todo });
+    } else {
+      return response.status(401).send("Unauthorized");
+    }
+  },
 };
 
 const controllerAuth = {
   google: async (request, response) => {
     const data = response.req.user._json;
-    const user = await User.findOne({
+    let user = await User.findOne({
       where: {
         email: data.email,
       },
     });
-    if (user) {
-      let token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-        expiresIn: EXPIRES_IN,
-      });
-      return response.status(201).send({ token });
-    } else {
+    if (!user) {
       const dataUser = {
         userName: data.name,
         email: data.email,
         password: await bcrypt.hash(data.sub, 10),
       };
-      const userNew = await User.create(dataUser);
+      user = await User.create(dataUser);
     }
+
+    let token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: EXPIRES_IN,
+    });
+    response.redirect(`https://trello-clone-x3tl.onrender.com/#token=${token}`);
+    return;
   },
 };
 module.exports = {
@@ -726,4 +993,5 @@ module.exports = {
   controllerTaskList,
   controllerTask,
   controllerAuth,
+  createIO,
 };

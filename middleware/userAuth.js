@@ -5,14 +5,6 @@ const User = db.users;
 
 const saveUser = async (req, res, next) => {
   try {
-    const username = await User.findOne({
-      where: {
-        userName: req.body.userName,
-      },
-    });
-    if (username) {
-      return res.status(400).send("User with this name exists");
-    }
     const emailcheck = await User.findOne({
       where: {
         email: req.body.email,
@@ -22,10 +14,9 @@ const saveUser = async (req, res, next) => {
     if (emailcheck) {
       return res.status(400).send("User with this email exists");
     }
-
     next();
   } catch (error) {
-    console.log(error);
+    return res.status(500).send("Error server");
   }
 };
 
