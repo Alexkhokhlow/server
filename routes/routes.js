@@ -22,7 +22,7 @@ passport.use(
     {
       clientID: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://trello-clone-x3tl.onrender.com/api/google/callback",
+      callbackURL: "http://localhost:3000/api/google/callback",
     },
     function (accessToken, refreshToken, profile, done) {
       userProfile = profile;
@@ -89,17 +89,20 @@ router.post("/labels", controllerTask.getLabels);
 
 router.post("/label/:id", controllerTask.getLabel);
 
-router.post("/todo", controllerTask.createTodo);
+router.post('/todo', controllerTask.createTodo);
 
-router.put("/todo", controllerTask.updateTodo);
+router.put('/todo', controllerTask.updateTodo);
 
-router.delete("/todo", controllerTask.deleteTodo);
+router.delete('/todo', controllerTask.deleteTodo);
 
-router.post("/checkList", controllerTask.createCheckList);
+router.post('/checkList', controllerTask.createCheckList);
 
-router.put("/checkList", controllerTask.updateCheckList);
+router.put('/checkList', controllerTask.updateCheckList);
 
-router.delete("/checkList", controllerTask.deleteCheckList);
+router.delete('/checkList', controllerTask.deleteCheckList);
+
+
+
 
 router.get(
   "/google",
