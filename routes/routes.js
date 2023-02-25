@@ -7,6 +7,7 @@ const {
   controllerTask,
   controllerAuth,
 } = require("../controllers/controllers");
+
 const userAuth = require("../middleware/userAuth");
 
 const passport = require("passport");
@@ -21,7 +22,7 @@ passport.use(
     {
       clientID: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/google/callback",
+      callbackURL: "https://trello-clone-x3tl.onrender.com/api/google/callback",
     },
     function (accessToken, refreshToken, profile, done) {
       userProfile = profile;
@@ -47,6 +48,10 @@ router.post("/signup", userAuth.saveUser, controllerUser.signup);
 router.post("/login", controllerUser.login);
 
 router.post("/email", controllerUser.checkEmail);
+
+router.post("/user", controllerUser.getUserInfo);
+
+router.put("/user", controllerUser.updateUserInfo);
 
 router.post("/dashboard", controllerDashboard.createDashboard);
 
@@ -74,16 +79,27 @@ router.put("/comment", controllerTask.updateComment);
 
 router.delete("/comment", controllerTask.deleteComment);
 
-router.post('/label', controllerTask.addLabel);
+router.post("/label", controllerTask.addLabel);
 
-router.put('/label', controllerTask.updateLabel);
+router.put("/label", controllerTask.updateLabel);
 
-router.delete('/label', controllerTask.deleteLabel);
+router.delete("/label", controllerTask.deleteLabel);
 
-router.post('/labels', controllerTask.getLabels);
+router.post("/labels", controllerTask.getLabels);
 
-router.post('/label/:id', controllerTask.getLabel);
+router.post("/label/:id", controllerTask.getLabel);
 
+router.post("/todo", controllerTask.createTodo);
+
+router.put("/todo", controllerTask.updateTodo);
+
+router.delete("/todo", controllerTask.deleteTodo);
+
+router.post("/checkList", controllerTask.createCheckList);
+
+router.put("/checkList", controllerTask.updateCheckList);
+
+router.delete("/checkList", controllerTask.deleteCheckList);
 
 router.get(
   "/google",

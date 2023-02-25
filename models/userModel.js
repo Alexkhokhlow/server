@@ -7,10 +7,16 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      info: {
+        type: DataTypes.STRING,
+      },
+      color: {
+        type: DataTypes.STRING,
+      },
       email: {
         type: DataTypes.STRING,
         unique: true,
-        isEmail: true, //checks for email format
+        isEmail: true, 
         allowNull: false,
       },
       password: {

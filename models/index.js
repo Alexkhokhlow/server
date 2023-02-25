@@ -2,7 +2,7 @@ const { Sequelize, DataTypes } = require("sequelize");
 
 // // for server
 const sequelize = new Sequelize(
-  "postgres://trello_g1i8_user:CAV55nXatlANaF6mga5OAXm2nXj0erRH@dpg-cfqan3arrk08lt58fa10-a/trello_g1i8",
+  "postgres://trello_9u58_user:7CcliEIcj5DvF2FlhIjDNQWy7Xmtv1lO@dpg-cft0db2rrk0c833lp8fg-a/trello_9u58",
   { dialect: "postgres" }
 );
 
@@ -33,6 +33,9 @@ db.taskinfo = require("./taskInfoModel")(sequelize, DataTypes).Taskinfo;
 db.comment = require("./commentModel")(sequelize, DataTypes).Comment;
 db.labels = require("./labelModel")(sequelize, DataTypes).Labels;
 db.taskLabel = require("./taskLabelModel")(sequelize, DataTypes).TaskLabel;
+db.checkList = require("./checkListModel")(sequelize, DataTypes).CheckList;
+db.todo = require("./todoModel")(sequelize, DataTypes).Todo;
+
 
 db.users.hasMany(db.dashboard);
 
@@ -52,6 +55,12 @@ db.task.belongsTo(db.tasklist, {
 
 db.taskinfo.hasMany(db.comment);
 db.comment.belongsTo(db.taskinfo);
+
+db.taskinfo.hasMany(db.checkList);
+db.checkList.belongsTo(db.taskinfo);
+
+db.checkList.hasMany(db.todo);
+db.todo.belongsTo(db.checkList);
 
 db.task.belongsToMany(db.labels, { through: db.taskLabel });
 db.labels.belongsToMany(db.task, { through: db.taskLabel, uniqueKey: "index" });
