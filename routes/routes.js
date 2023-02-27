@@ -63,11 +63,17 @@ router.post("/users_dashboard", controllerDashboard.addUserToDashboard);
 
 router.post("/tasklist", controllerTaskList.createTaskList);
 
+router.put("/tasklist", controllerTaskList.updateTaskList);
+
 router.delete("/tasklist", controllerTaskList.deleteTaskList);
 
 router.post("/task", controllerTask.createTask);
 
 router.put("/task", controllerTask.updateTask);
+
+router.put('/taskName', controllerTask.updateTaskName);
+
+router.delete("/task", controllerTask.deleteTask);
 
 router.post("/taskInfo", controllerTask.getTaskInfo);
 
