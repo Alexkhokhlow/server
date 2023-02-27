@@ -2,7 +2,7 @@ const { Sequelize, DataTypes } = require("sequelize");
 
 // // for server
 const sequelize = new Sequelize(
-  "postgres://trello_9u58_user:7CcliEIcj5DvF2FlhIjDNQWy7Xmtv1lO@dpg-cft0db2rrk0c833lp8fg-a/trello_9u58",
+  "postgres://trello_4tqv_user:vcp70HooWaqbhgPmCasuxpmlnLal8ZQs@dpg-cfu7v29a6gdotc9v77ng-a/trello_4tqv",
   { dialect: "postgres" }
 );
 
