@@ -91,11 +91,12 @@ const controllerUser = {
 
   signup: async (request, response) => {
     try {
-      const { userName, email, password } = request.body;
+      const { userName, email, password, color } = request.body;
 
       const data = {
         userName,
         email,
+        color,
         password: await bcrypt.hash(password, 10),
       };
       const user = await User.create(data);
@@ -168,7 +169,12 @@ const controllerUser = {
 
         return response
           .status(200)
-          .json({ name: user.userName, email: user.email, info: user.info });
+          .json({
+            name: user.userName,
+            email: user.email,
+            info: user.info,
+            color: user.color,
+          });
       }
       return response.status(401).send("Unauthorized");
     } catch (error) {
@@ -289,13 +295,19 @@ const controllerDashboard = {
         });
 
         if (dashboard) {
+          const creatorInfo = await User.findOne({
+            where: {
+              id: dashboard.userId,
+            },
+          });
           const creator = dashboard.userId == userId;
           const users = await User.findAll({
             include: [{ model: Dashboard, where: { id: dashboard.id } }],
           });
           const available =
-            users.filter((data) => data.userId == userId).length !== 0;
+            users.filter((data) => data.id == userId).length !== 0;
           let dashboardInfo = await Dashboard.findOne({
+            order: [[TaskList, "createdAt", "ASC"]],
             include: [
               { model: TaskList, where: { dashboardId: dashboard.id } },
             ],
@@ -337,6 +349,10 @@ const controllerDashboard = {
                         include: [{ model: Taskinfo, where: { id: task.id } }],
                       });
 
+                      let comments = await Comment.findAll({
+                        include: [{ model: Taskinfo, where: { id: task.id } }],
+                      });
+                      task.dataValues.comments = comments ? comments.length : 0;
                       if (checkLists) {
                         checkLists = await Promise.all(
                           checkLists.map(async (item) => {
@@ -366,9 +382,9 @@ const controllerDashboard = {
                           },
                           { checked: 0, all: 0 }
                         );
-                        task.dataValues.checkList = [checkLists];
+                        task.dataValues.checkLists = [checkLists];
                       } else {
-                        task.dataValues.checkList = [];
+                        task.dataValues.checkLists = [];
                       }
 
                       return task;
@@ -389,7 +405,7 @@ const controllerDashboard = {
             return response.status(200).send({
               dashboard: dashboardInfo,
               labels,
-              users,
+              users: { users: users, creator: creatorInfo },
               id: dashboard.id,
               access: true,
             });
@@ -480,6 +496,46 @@ const controllerTaskList = {
     }
   },
 
+  updateTaskList: async (request, response) => {
+    try {
+      const { token, id, name } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        const item = await TaskList.findOne({
+          where: {
+            id,
+          },
+        });
+
+        Taskinfo.update(
+          {
+            tasklist: name,
+          },
+          {
+            where: {
+              tasklist: item.name,
+            },
+          }
+        );
+        const taskList = await TaskList.update(
+          {
+            name,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+        return response.status(200).send({ taskList });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      return response.status(500).send("Error token");
+    }
+  },
+
   deleteTaskList: async (request, response) => {
     try {
       const { token, boardId, id } = request.body;
@@ -553,11 +609,62 @@ const controllerTask = {
             },
           }
         );
+        const taskList = await TaskList.findOne({
+          where: {
+            id: taskListId,
+          },
+        });
+        Taskinfo.update(
+          {
+            tasklist: taskList.name,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
         return response.status(200).send({ task });
       } else {
         return response.status(401).send("Unauthorized");
       }
     } catch (error) {
+      return response.status(500).send("Error token");
+    }
+  },
+
+  deleteTask: async (request, response) => {
+    try {
+      const { token, id } = request.body;
+      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
+      if (userId) {
+        Comment.destroy({
+          where: {
+            taskinfoId: id,
+          },
+        });
+        CheckList.destroy({
+          where: {
+            taskinfoId: id,
+          },
+        });
+
+        Taskinfo.destroy({
+          where: {
+            taskId: id,
+          },
+        });
+        await Task.destroy({
+          where: {
+            id,
+          },
+        });
+        return response.status(200).send({ success: true });
+      } else {
+        return response.status(401).send("Unauthorized");
+      }
+    } catch (error) {
+      console.log(error);
       return response.status(500).send("Error token");
     }
   },
@@ -571,10 +678,21 @@ const controllerTask = {
     });
 
     let comments = await Taskinfo.findOne({
-      include: [{ model: Comment, where: { taskinfoId: taskInfo.id } }],
+      order: [[Comment, "createdAt", "ASC"]],
+      include: [
+        {
+          model: Comment,
+          where: { taskinfoId: taskInfo.id },
+        },
+      ],
     });
     let checkLists = await Taskinfo.findOne({
-      include: [{ model: CheckList, where: { taskinfoId: taskInfo.id } }],
+      include: [
+        {
+          model: CheckList,
+          where: { taskinfoId: taskInfo.id },
+        },
+      ],
     });
     if (checkLists) {
       checkLists = await Promise.all(
@@ -617,6 +735,31 @@ const controllerTask = {
     }
   },
 
+  updateTaskName: async (request, response) => {
+    const { token, id, name } = request.body;
+    const taskInfo = await Taskinfo.update(
+      {
+        name,
+      },
+      {
+        where: {
+          taskId: id,
+        },
+      }
+    );
+    const task = await Task.update(
+      {
+        name,
+      },
+      {
+        where: {
+          id,
+        },
+      }
+    );
+    return response.status(200).send({ taskInfo });
+  },
+
   updateTaskInfo: async (request, response) => {
     const { token, id, description } = request.body;
     const taskInfo = await Taskinfo.update(
@@ -629,7 +772,7 @@ const controllerTask = {
         },
       }
     );
-
+    console.log(taskInfo);
     return response.status(200).send({ taskInfo });
   },
 
@@ -885,16 +1028,17 @@ const controllerTask = {
     const { token, id } = request.body;
     const userId = jwt.verify(token, process.env.JWT_SECRET).id;
     if (userId) {
-      const checkList = await CheckList.destroy({
-        where: {
-          id,
-        },
-      });
       Todo.destroy({
         where: {
           checkListId: id,
         },
       });
+      const checkList = await CheckList.destroy({
+        where: {
+          id,
+        },
+      });
+
       return response.status(201).send({ checkList });
     } else {
       return response.status(401).send("Unauthorized");
@@ -976,6 +1120,7 @@ const controllerAuth = {
         userName: data.name,
         email: data.email,
         password: await bcrypt.hash(data.sub, 10),
+        color: "rgb(0, 101, 255)",
       };
       user = await User.create(dataUser);
     }
