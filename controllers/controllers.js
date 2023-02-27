@@ -320,10 +320,11 @@ const controllerDashboard = {
             dashboardInfo.dataValues.tasklists = await Promise.all(
               dashboardInfo.tasklists.map(async (data) => {
                 const result = await TaskList.findOne({
+                  order: [[Task, "index", "ASC"]],
+
                   include: [
                     {
                       model: Task,
-                      order: [["updatedAt", "ASC"]],
                       where: { taskListId: data.id },
                     },
                   ],
