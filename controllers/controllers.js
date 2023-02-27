@@ -320,10 +320,10 @@ const controllerDashboard = {
             dashboardInfo.dataValues.tasklists = await Promise.all(
               dashboardInfo.tasklists.map(async (data) => {
                 const result = await TaskList.findOne({
+                  order: [[Task, "index", "ASC"]],
                   include: [
                     {
                       model: Task,
-                      order: [["updatedAt", "ASC"]],
                       where: { taskListId: data.id },
                     },
                   ],
@@ -332,7 +332,7 @@ const controllerDashboard = {
                   result.dataValues.tasks = await Promise.all(
                     result.tasks.map(async (task) => {
                       let labels = await Labels.findAll({
-                        order: [["index", "ASC"]],
+                        order: [[Task, "index", "ASC"]],
                         include: [{ model: Task, where: { id: task.id } }],
                       });
                       task.dataValues.labels = labels ? labels : [];
