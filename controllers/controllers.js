@@ -7,8 +7,8 @@ let io = "";
 function createIO(server) {
   io = require("socket.io")(server, {
     cors: {
-      origin: "*",
-      methods: ["GET", "POST", "PUT", "DELETE"],
+      origin: "https://clonetrello.netlify.app/",
+      methods: ["GET", "POST"],
     },
   });
 
