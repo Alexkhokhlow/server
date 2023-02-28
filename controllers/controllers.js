@@ -1171,7 +1171,7 @@ const controllerAuth = {
     let token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: EXPIRES_IN,
     });
-    response.redirect(`http://localhost:8080/#token=${token}`);
+    response.redirect(`https://clonetrello.netlify.app/#token=${token}`);
     return;
   },
 };
