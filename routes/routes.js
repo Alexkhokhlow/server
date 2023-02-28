@@ -71,6 +71,8 @@ router.post("/task", controllerTask.createTask);
 
 router.put("/task", controllerTask.updateTask);
 
+router.put('/taskIndex', controllerTask.updateTaskIndex);
+
 router.put('/taskName', controllerTask.updateTaskName);
 
 router.delete("/task", controllerTask.deleteTask);
