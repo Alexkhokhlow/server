@@ -7,7 +7,7 @@ let io = "";
 function createIO(server) {
   io = require("socket.io")(server, {
     cors: {
-      origin: false,
+      origin: "*",
       methods: ["GET", "POST", "PUT", "DELETE"],
     },
   });
