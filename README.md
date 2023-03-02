@@ -1,3 +1,7 @@
+Сервер для нашего [проекта](https://github.com/Alexkhokhlow/rs-clone)
+Стек: Node.js, Exspress, Sequelize, Postgresql
+
+Метод для проверки:
 Авторизация клиента. Передается почта и пароль.
 
 Method: POST
