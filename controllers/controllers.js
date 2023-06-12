@@ -78,14 +78,13 @@ const controllerUser = {
   checkToken: async (request, response) => {
     try {
       const { token } = request.body;
-      const userId = jwt.verify(token, process.env.JWT_SECRET).id;
-      if (userId) {
-        return response.status(200).send({ success: true });
-      } else {
-        return response.status(400).send("error token");
-      }
+      console.log(token);
+      return jwt.verify(token, process.env.JWT_SECRET).id 
+              ? response.status(200).send({ success: true }) 
+              : response.status(400).send("error token/");
     } catch (error) {
-      return response.status(400).send("error token");
+      console.log(error);
+      return response.status(400).send("error token1");
     }
   },
 
@@ -134,7 +133,8 @@ const controllerUser = {
       }
       return response.status(400).send("Authentication failed");
     } catch (error) {
-      return response.status(400).send();
+      console.log(error);
+      return response.status(400).send("error");
     }
   },
 
