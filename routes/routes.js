@@ -22,7 +22,7 @@ passport.use(
     {
       clientID: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://trello-clone-x3tl.onrender.com/api/google/callback",
+      callbackURL: "https://trello-clone-kz9j.onrender.com/api/google/callback",
     },
     function (accessToken, refreshToken, profile, done) {
       userProfile = profile;
